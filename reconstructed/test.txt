@@ -1,1 +1,0 @@
-This is a test file for the QR File Transfer System. It contains multiple lines to ensure it is large enough to be split into multiple chunks if the chunk size is set small enough. Line 2, Line 3, Line 4, Line 5.
