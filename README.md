@@ -1,80 +1,84 @@
-# QR File Transfer System
+# QR File Transfer System Pro
 
-A complete Python project to transfer any file (including large images) offline by converting them into a sequence of QR codes and reconstructing them back.
+A professional-grade Python project to transfer any file offline by converting them into a sequence of QR codes, videos, or live streams.
 
-## Features
+## New Features
 
-- **Encoder**: Compresses files using `zlib`, splits them into chunks, and generates a sequence of QR codes with metadata.
-- **Decoder**: Reads QR codes from a folder, validates chunk integrity, and reconstructs the original file.
-- **Webcam Scanner**: Live decoding of QR codes from a camera feed.
-- **Animated QR**: Generate a video from the QR code sequence for easier transmission.
-- **Reliability**: Uses SHA256 hashing to verify the integrity of the reconstructed file.
-- **GUI & CLI**: Easy-to-use Tkinter interface and a powerful command-line interface.
-- **Metadata**: Each QR includes filename, chunk index, total chunks, and the file hash.
+- **Modern GUI**: Built with `CustomTkinter` for a sleek, professional look with integrated progress bars.
+- **Smart Session Management**: Every encoding session is saved in a unique timestamped folder to prevent overwriting.
+- **Output Mode Selection**: Choose between QR image folders, MP4 videos, or both.
+- **QR-to-Video**: Convert your QR sequence into an MP4 video for high-speed transmission.
+- **Multi-Mode Scanning**: Scan from image folders, MP4 videos, or live webcam feeds.
+- **Robust Recovery**: Identify exact missing chunks and recover them without restarting the transfer.
+- **Advanced Metadata**: Every QR includes unique session IDs, chunk hashes, and global file integrity checks.
+- **Reed-Solomon Support**: Integrated error correction for physical scanning reliability.
+- **Compression Options**: Support for `zlib`, `gzip`, `lzma`, and `zstandard`.
+
+## Project Structure
+
+```text
+project/
+├── encoder.py         # File-to-QR logic
+├── decoder.py         # QR-to-File logic
+├── video_generator.py # QR-to-Video conversion
+├── scan_video.py      # Video-to-File logic
+├── live_scanner.py    # Webcam/Live scanning engine
+├── recovery.py        # Missing chunk detection & recovery
+├── checksum.py        # SHA256 & CRC32 verification
+├── compression.py     # Multi-algorithm compression support
+├── qr_utils.py        # Robust payload & session management
+├── config.py          # Global settings & paths
+├── gui/               # Modern CustomTkinter interface
+│   ├── main_window.py # Main entry point
+│   ├── scanner_ui.py  # Live scanning interface
+│   ├── recovery_ui.py # Recovery & resume interface
+│   ├── dashboard.py   # Encoder & Video tools
+│   └── widgets.py     # Reusable UI components
+└── requirements.txt   # Dependencies
+```
 
 ## Installation
 
-1. Ensure you have Python 3.7+ installed.
-2. Install the required libraries:
+1. Install Python 3.9+.
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-   *Note: On Linux, you might need to install `libzbar0`: `sudo apt-get install libzbar0`*
+   *Note: On Linux, install `libzbar0`: `sudo apt-get install libzbar0`*
 
 ## Usage
 
-### GUI (Recommended)
-Run the main application:
+### GUI (Main Interface)
+Launch the professional desktop application:
 ```bash
 python main.py
 ```
 
-### CLI
-**Encoding a file:**
-```bash
-python main.py encode <file_path> --output output_qrs --size 500
-```
+### Advanced Workflows
 
-**Decoding a folder of QRs:**
-```bash
-python main.py decode --input output_qrs --output reconstructed
-```
+1. **High-Speed Transfer**:
+   - Use the **Dashboard** to encode a file.
+   - Use **Video Generator** to create `transfer.mp4`.
+   - On the receiving end, use **Live Scanner** or **Video Scanner** to reconstruct.
 
-### Webcam Scanner
-To scan QR codes live from your webcam:
-```bash
-python webcam_decoder.py
-```
+2. **Recovery Mode**:
+   - If a transfer is incomplete, go to the **Recovery** tab.
+   - Click **Check Missing Chunks** to see what's missing.
+   - Upload missing QR images or rescan the missing segments.
 
-### Animated QR Video
-To create a video from your generated QR codes:
-```bash
-python video_generator.py output_qrs qr_transfer.mp4
-```
+## Reliability & Integrity
 
-## Architecture
-
-- `utils.py`: Contains core logic for hashing, compression, and JSON payload handling.
-- `encoder.py`: Handles file reading, chunking, and QR code generation.
-- `decoder.py`: Handles QR code reading, sorting, and file reconstruction.
-- `webcam_decoder.py`: Uses OpenCV and pyzbar for real-time camera scanning.
-- `main.py`: Entry point for CLI and GUI.
+- **Chunk Hashing**: Every QR chunk is verified using SHA256.
+- **Full File Hashing**: The final reconstructed file is matched against the original's SHA256.
+- **Session IDs**: Prevents mixing chunks from different files or transfer sessions.
 
 ## Limitations
 
-- **Chunk Size**: Larger chunk sizes lead to denser QR codes, which are harder to scan with low-quality cameras. Default is 500 bytes.
-- **Speed**: QR generation and decoding can be slow for very large files (e.g., >10MB) due to the large number of QR codes required.
+- **Video FPS**: Higher FPS transfers are faster but require higher-quality cameras and better lighting.
+- **QR Density**: Small chunk sizes (e.g., 200 bytes) are easier to scan but require more QR codes.
 
 ## Future Improvements
 
-- [ ] Add Reed-Solomon error correction for better physical scanning reliability.
-- [ ] Implement multi-QR detection per frame.
-- [ ] Add animated QR video generation for faster transfers.
-- [ ] Support for resume interrupted transfers.
-
-## Demonstration
-
-1. Run `python main.py encode example.jpg`.
-2. Check the `output_qrs` folder for the generated images.
-3. Run `python main.py decode --input output_qrs`.
-4. Verify the file in the `reconstructed` folder.
+- [ ] Multi-QR frame mode (Grid of 4 QRs per frame).
+- [ ] Adaptive FPS based on scan success rate.
+- [ ] Mobile companion app for receiving.

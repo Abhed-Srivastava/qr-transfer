@@ -1,111 +1,118 @@
 import os
-import sys
+import cv2
 import glob
 from PIL import Image
 from pyzbar.pyzbar import decode
-import utils
+import qr_utils
+import data_compression as compression
+import checksum
+import config
 
 class FileDecoder:
-    def __init__(self, input_dir="output_qrs", output_dir="reconstructed"):
-        self.input_dir = input_dir
-        self.output_dir = output_dir
+    def __init__(self, output_dir=None):
+        self.output_dir = output_dir or config.RECONSTRUCTED_DIR
+        self.reset()
+
+    def reset(self):
         self.chunks = {}
         self.total_chunks = None
-        self.original_filename = None
-        self.original_hash = None
+        self.session_id = None
+        self.filename = None
+        self.file_ext = None
+        self.full_file_hash = None
+        self.compression_algo = "zlib"
 
-    def decode_folder(self):
-        if not os.path.exists(self.input_dir):
-            print(f"Error: Directory {self.input_dir} not found.")
+    def process_qr_data(self, data):
+        payload = qr_utils.parse_payload(data)
+        if not payload:
             return False
 
-        qr_files = glob.glob(os.path.join(self.input_dir, "*.png"))
-        if not qr_files:
-            print("No QR code images found in the directory.")
+        idx = payload['idx']
+        if idx in self.chunks:
+            return False # Already have it
+
+        # Store metadata from the first chunk we see
+        if self.total_chunks is None:
+            self.total_chunks = payload['tot']
+            self.session_id = payload['sid']
+            self.filename = payload['name']
+            self.file_ext = payload['ext']
+            self.full_file_hash = payload['fhash']
+            self.compression_algo = payload.get('comp', 'zlib')
+
+        # Verify chunk integrity if possible
+        chunk_data = qr_utils.get_chunk_bytes(payload)
+        if checksum.calculate_sha256(chunk_data) != payload['chash']:
             return False
 
-        print(f"Found {len(qr_files)} QR code images. Decoding...")
+        self.chunks[idx] = chunk_data
+        return True
 
-        for i, file_path in enumerate(qr_files):
+    def decode_folder(self, folder_path, progress_callback=None):
+        files = sorted(glob.glob(os.path.join(folder_path, "qr_*.png")))
+        for i, f in enumerate(files):
             try:
-                decoded_objects = decode(Image.open(file_path))
-                if not decoded_objects:
-                    print(f"Warning: Could not decode {file_path}")
-                    continue
-
-                payload_str = decoded_objects[0].data.decode('utf-8')
-                payload = utils.decode_chunk(payload_str)
-
-                if payload:
-                    idx = payload['i']
-                    self.chunks[idx] = utils.get_chunk_data(payload)
-                    
-                    # Store metadata from the first successful chunk
-                    if self.total_chunks is None:
-                        self.total_chunks = payload['t']
-                        self.original_filename = payload['n']
-                        self.original_hash = payload['h']
-
-                progress = (i + 1) / len(qr_files) * 100
-                print(f"\rDecoding progress: {progress:.1f}% ({i + 1}/{len(qr_files)})", end="", flush=True)
-
-            except Exception as e:
-                print(f"\nError processing {file_path}: {e}")
-
-        print("\nDecoding complete. Reassembling...")
+                decoded = decode(Image.open(f))
+                for obj in decoded:
+                    self.process_qr_data(obj.data.decode('utf-8'))
+            except:
+                continue
+            
+            if progress_callback:
+                progress_callback(i + 1, len(files))
+        
         return self.reassemble()
 
-    def reassemble(self):
-        if not self.chunks:
-            print("No chunks were decoded.")
-            return False
-
-        # Check for missing chunks
+    def get_missing_chunks(self):
+        if self.total_chunks is None:
+            return []
         missing = []
         for i in range(1, self.total_chunks + 1):
             if i not in self.chunks:
                 missing.append(i)
+        return missing
 
+    def reassemble(self):
+        missing = self.get_missing_chunks()
         if missing:
-            print(f"Error: Missing {len(missing)} chunks: {missing}")
-            return False
+            return False, missing
 
-        # Sort and join chunks
-        print("Sorting and joining chunks...")
+        # Sort and join
         sorted_indices = sorted(self.chunks.keys())
-        full_compressed_data = b"".join(self.chunks[idx] for idx in sorted_indices)
-
+        full_data = b"".join(self.chunks[idx] for idx in sorted_indices)
+        
+        # Decompress
         try:
-            print("Decompressing data...")
-            original_data = utils.decompress_data(full_compressed_data)
+            decompressed_data = compression.decompress(full_data, self.algorithm_from_metadata())
             
-            # Verify hash
-            reconstructed_hash = utils.calculate_sha256(original_data)
-            if reconstructed_hash != self.original_hash:
-                print("Error: SHA256 verification failed!")
-                print(f"Original: {self.original_hash}")
-                print(f"Got:      {reconstructed_hash}")
-                return False
+            # Verify full hash
+            if checksum.calculate_sha256(decompressed_data) != self.full_file_hash:
+                return False, "Hash verification failed"
 
-            print("SHA256 verification successful!")
+            # Save
+            if not os.path.exists(self.output_dir):
+                os.makedirs(self.output_dir)
             
-            # Save file
-            utils.ensure_dir(self.output_dir)
-            output_path = os.path.join(self.output_dir, self.original_filename)
+            out_name = f"{self.filename}{self.file_ext}"
+            out_path = os.path.join(self.output_dir, out_name)
+            with open(out_path, 'wb') as f:
+                f.write(decompressed_data)
             
-            with open(output_path, 'wb') as f:
-                f.read(original_data) if hasattr(original_data, 'read') else f.write(original_data)
-
-            print(f"File successfully reconstructed: {output_path}")
-            return True
-
+            return True, out_path
         except Exception as e:
-            print(f"Error during reassembly: {e}")
-            return False
+            return False, str(e)
+
+    def algorithm_from_metadata(self):
+        return self.compression_algo
 
 if __name__ == "__main__":
-    input_folder = sys.argv[1] if len(sys.argv) > 1 else "output_qrs"
-    output_folder = sys.argv[2] if len(sys.argv) > 2 else "reconstructed"
+    import sys
+    folder = sys.argv[1] if len(sys.argv) > 1 else config.QRS_DIR
+    out = sys.argv[2] if len(sys.argv) > 2 else config.RECONSTRUCTED_DIR
     
-    decoder = FileDecoder(input_folder, output_folder)
-    decoder.decode_folder()
+    dec = FileDecoder(out)
+    success, result = dec.decode_folder(folder)
+    if success:
+        print(f"Success! File saved to: {result}")
+    else:
+        print(f"Failed: {result}")

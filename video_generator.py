@@ -1,36 +1,46 @@
 import cv2
 import os
 import glob
-import sys
+import config
 
-def create_qr_video(qr_folder="output_qrs", output_video="qr_transfer.mp4", fps=2):
-    """
-    Combine all QR code images into a single video file.
-    """
-    images = sorted(glob.glob(os.path.join(qr_folder, "qr_*.png")))
-    if not images:
-        print(f"No QR images found in {qr_folder}")
-        return
+class VideoGenerator:
+    def __init__(self, qr_folder, output_video=None, fps=None, resolution=None):
+        self.qr_folder = qr_folder
+        self.output_video = output_video or os.path.join(config.VIDEOS_DIR, "transfer.mp4")
+        self.fps = fps or config.DEFAULT_FPS
+        self.resolution = resolution # (width, height)
 
-    # Read the first image to get dimensions
-    first_img = cv2.imread(images[0])
-    height, width, layers = first_img.shape
+    def generate(self, progress_callback=None):
+        images = sorted(glob.glob(os.path.join(self.qr_folder, "qr_*.png")))
+        if not images:
+            return None
 
-    # Define the codec and create VideoWriter object
-    # 'mp4v' is a common codec for MP4
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
+        # Determine resolution from first image if not provided
+        first_img = cv2.imread(images[0])
+        h, w, _ = first_img.shape
+        res = self.resolution or (w, h)
 
-    print(f"Creating video: {output_video} with {len(images)} frames at {fps} FPS...")
-    
-    for image_path in images:
-        img = cv2.imread(image_path)
-        video.write(img)
+        if not os.path.exists(os.path.dirname(self.output_video)):
+            os.makedirs(os.path.dirname(self.output_video))
 
-    video.release()
-    print("Video generation complete!")
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        video = cv2.VideoWriter(self.output_video, fourcc, self.fps, res)
+
+        for i, img_path in enumerate(images):
+            img = cv2.imread(img_path)
+            if self.resolution:
+                img = cv2.resize(img, self.resolution)
+            video.write(img)
+            
+            if progress_callback:
+                progress_callback(i + 1, len(images))
+
+        video.release()
+        return self.output_video
 
 if __name__ == "__main__":
-    folder = sys.argv[1] if len(sys.argv) > 1 else "output_qrs"
-    output = sys.argv[2] if len(sys.argv) > 2 else "qr_transfer.mp4"
-    create_qr_video(folder, output)
+    import sys
+    folder = sys.argv[1] if len(sys.argv) > 1 else config.QRS_DIR
+    gen = VideoGenerator(folder)
+    path = gen.generate()
+    print(f"Video saved to: {path}")
