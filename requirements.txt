@@ -1,0 +1,5 @@
+qrcode[pil]
+Pillow
+pyzbar
+opencv-python
+tqdm
