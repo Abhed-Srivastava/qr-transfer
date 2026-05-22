@@ -28,10 +28,10 @@ class VideoScanner:
                 self.decoder.process_qr_data(obj.data.decode('utf-8'))
             
             if progress_callback:
-                progress_callback(frame_idx, total_frames)
+                progress_callback(frame_idx, total_frames, f"Scanning frame {frame_idx}/{total_frames}")
 
         cap.release()
-        return self.decoder.reassemble()
+        return self.decoder.reassemble_all()
 
 if __name__ == "__main__":
     import sys

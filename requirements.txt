@@ -8,4 +8,5 @@ ffmpeg-python
 customtkinter
 tqdm
 zstandard
-lz4
+lzma
+pyinstaller

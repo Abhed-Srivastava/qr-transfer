@@ -72,7 +72,7 @@ class FileEncoder:
             qr.make(fit=True)
             
             img = qr.make_image(fill_color="black", back_color="white")
-            qr_filename = f"qr_{chunk_index:04d}.png"
+            qr_filename = f"qr_{self.session_id}_{chunk_index:04d}.png"
             qr_path = os.path.join(self.output_dir, qr_filename)
             img.save(qr_path)
             generated_files.append(qr_path)

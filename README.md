@@ -30,10 +30,13 @@ project/
 ├── config.py          # Global settings & paths
 ├── gui/               # Modern CustomTkinter interface
 │   ├── main_window.py # Main entry point
+│   ├── dashboard.py   # Overview & Stats
+│   ├── encoder_ui.py  # File-to-QR settings
+│   ├── decoder_ui.py  # Standalone folder/video decoder
 │   ├── scanner_ui.py  # Live scanning interface
 │   ├── recovery_ui.py # Recovery & resume interface
-│   ├── dashboard.py   # Encoder & Video tools
 │   └── widgets.py     # Reusable UI components
+├── build_exe.py       # Standalone build script
 └── requirements.txt   # Dependencies
 ```
 
@@ -54,9 +57,37 @@ Launch the professional desktop application:
 python main.py
 ```
 
+### Building Standalone Executable
+To create a standalone executable for Windows/Linux:
+```bash
+python build_exe.py
+```
+The result will be in the `dist/` folder.
+
+### Packaged Executable Output
+When the app is packaged as an executable, it stores generated files in a user-writable app folder:
+
+- Windows: `C:\Users\<YourUser>\Documents\QRTransferPro\`
+- Linux: `~/Documents/QRTransferPro/`
+
+Inside that folder, the app creates:
+
+- `qrs/` for generated QR images
+- `videos/` for generated MP4 files
+- `reconstructed/` for decoded files
+- `temp/` for temporary working files
+
+During source-code development, those folders stay inside the project directory unless you override `QR_TRANSFER_PRO_HOME`.
+
 ### Advanced Workflows
 
-1. **High-Speed Transfer**:
+1. **Standalone Folder Decoding**:
+   - Go to the **Folder Decoder** tab.
+   - Browse for a folder containing QR PNG images.
+   - Click **Start Reconstruction** to batch-restore all files found in that folder.
+   - Alternatively, use **Scan from Video** to decode an MP4 file directly.
+
+2. **High-Speed Transfer**:
    - Use the **Dashboard** to encode a file.
    - Use **Video Generator** to create `transfer.mp4`.
    - On the receiving end, use **Live Scanner** or **Video Scanner** to reconstruct.

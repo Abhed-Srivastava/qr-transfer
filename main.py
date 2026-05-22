@@ -2,22 +2,20 @@ import sys
 import os
 
 # Add the current directory to sys.path to allow imports from gui/
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
 
 from gui.main_window import MainWindow
 
 def main():
+    """Main entry point for the QR File Transfer System Pro."""
     try:
         app = MainWindow()
         app.mainloop()
     except Exception as e:
-        print(f"Failed to start GUI: {e}")
-        print("Falling back to CLI...")
-        # Add CLI fallback logic here if needed
-        import argparse
-        parser = argparse.ArgumentParser(description="QR File Transfer System Pro")
-        # ... (CLI logic from previous version or extended)
-        print("Please run with --help for CLI usage.")
+        print(f"Critical Error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
